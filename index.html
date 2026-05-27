@@ -56,6 +56,10 @@
       const [clearPw, setClearPw] = useState("");
       const [clearErr, setClearErr] = useState("");
       const [clearTarget, setClearTarget] = useState(null);
+      const [showApprovePIN, setShowApprovePIN] = useState(false);
+      const [approvePIN, setApprovePIN] = useState("");
+      const [approvePINErr, setApprovePINErr] = useState("");
+      const [pendingApproveId, setPendingApproveId] = useState(null);
 
       function setRow(i, field, val) {
         setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: String(val) } : r));
@@ -143,7 +147,18 @@
         setLoading(false);
       }
 
-      async function handleApprove(id) {
+      function requestApprove(id) {
+        setPendingApproveId(id);
+        setApprovePIN("");
+        setApprovePINErr("");
+        setShowApprovePIN(true);
+      }
+
+      async function confirmApprove() {
+        if (approvePIN !== "86") { setApprovePINErr("Incorrect PIN."); return; }
+        setShowApprovePIN(false);
+        setApprovePIN("");
+        const id = pendingApproveId;
         try {
           await fetch(`${AT_URL}/${id}`, {
             method: "PATCH",
@@ -152,6 +167,10 @@
           });
           setRequests(prev => prev.map(r => r.id === id ? { ...r, fields: { ...r.fields, "Approved": true } } : r));
         } catch (err) { alert("Error approving: " + err.message); }
+      }
+
+      async function handleApprove(id) {
+        requestApprove(id);
       }
 
       async function handleUnapprove(id) {
@@ -166,7 +185,7 @@
       }
 
       async function handleClearAll() {
-        if (clearPw !== "3825") { setClearErr("Incorrect password."); return; }
+        if (String(clearPw).trim() !== "3825") { setClearErr("Incorrect password."); return; }
         try {
           const ids = requests.map(r => r.id);
           for (let i = 0; i < ids.length; i += 10) {
@@ -396,6 +415,22 @@
                       <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Approved requests only</div>
                     </div>
                     <button onClick={generatePDF} style={{ padding: "10px 22px", background: "#1a3a5c", color: "#fff", border: "none", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Download PDF</button>
+                  </div>
+                )}
+
+                {showApprovePIN && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+                    <div style={{ background: "#fff", borderRadius: 12, padding: 28, maxWidth: 340, width: "100%" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#1a3a5c", marginBottom: 8 }}>Approve Request</div>
+                      <div style={{ fontSize: 13, color: "#666", marginBottom: 16 }}>Enter your manager PIN to approve this request.</div>
+                      <input type="password" value={approvePIN} onChange={e => { setApprovePIN(e.target.value); setApprovePINErr(""); }} placeholder="Enter PIN" autoFocus
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: approvePINErr ? "2px solid #cc4444" : "1px solid #dde1e7", fontSize: 15, boxSizing: "border-box", marginBottom: 6 }} />
+                      {approvePINErr && <div style={{ color: "#cc4444", fontSize: 12, marginBottom: 8 }}>{approvePINErr}</div>}
+                      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                        <button onClick={() => setShowApprovePIN(false)} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "1px solid #dde1e7", background: "#f8f9fb", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#555" }}>Cancel</button>
+                        <button onClick={confirmApprove} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#28a745", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>✅ Approve</button>
+                      </div>
+                    </div>
                   </div>
                 )}
 
